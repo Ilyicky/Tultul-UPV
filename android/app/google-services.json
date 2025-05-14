@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "606371152292",
+    "firebase_url": "https://flutter-tultul-app-default-rtdb.firebaseio.com",
+    "project_id": "flutter-tultul-app",
+    "storage_bucket": "flutter-tultul-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:606371152292:android:2eb16002324bc70f260131",
+        "android_client_info": {
+          "package_name": "com.flutter_tultul_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYumeLAGHEyvxmk-UEYXOOfIApQbNtLEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
