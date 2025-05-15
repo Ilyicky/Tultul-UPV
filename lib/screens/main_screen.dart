@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import 'map_screen.dart';
-import 'building_list_screen.dart';
+import 'buildings_list_screen.dart';
 import 'bookmarks_screen.dart';
 import 'profile_screen.dart';
 import 'admin/dashboard_screen.dart';
@@ -24,14 +24,14 @@ class _MainScreenState extends State<MainScreen> {
 
     final List<Widget> adminScreens = [
       const MapScreen(),
-      const BuildingListScreen(),
+      const BuildingsListScreen(),
       const DashboardScreen(),
       const ProfileScreen(),
     ];
 
     final List<Widget> userScreens = [
       const MapScreen(),
-      const BuildingListScreen(),
+      const BuildingsListScreen(),
       const BookmarksScreen(),
       const ProfileScreen(),
     ];
@@ -53,8 +53,8 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Map',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.business),
-            label: 'Buildings',
+            icon: Icon(Icons.search),
+            label: 'Search',
           ),
           if (isAdmin)
             const NavigationDestination(

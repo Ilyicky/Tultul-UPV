@@ -13,7 +13,8 @@ import 'building_details_screen.dart';
 import 'package:geolocator/geolocator.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final Building? building;
+  const MapScreen({super.key, this.building});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -36,6 +37,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    if (widget.building != null) {
+      _selectedBuilding = widget.building;
+    }
     _setupLocation();
   }
 
@@ -108,6 +112,24 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       if (location != null && mounted) {
         setState(() => _currentLocation = location);
         animatedMapMove(location, _defaultZoom);
+        if (_selectedBuilding != null) {
+          _updateRoute();
+          if (_selectedBuilding!.latitude != null && _selectedBuilding!.longitude != null) {
+            final bounds = LatLngBounds.fromPoints([
+              location,
+              LatLng(_selectedBuilding!.latitude!, _selectedBuilding!.longitude!),
+            ]);
+            final zoomLevel = _calculateZoomLevel(
+              location,
+              LatLng(_selectedBuilding!.latitude!, _selectedBuilding!.longitude!),
+            );
+            _mapController.move(bounds.center, zoomLevel);
+            // Show the building details popup automatically
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showBuildingDetails(_selectedBuilding!, context);
+            });
+          }
+        }
       }
 
       // Listen to location updates

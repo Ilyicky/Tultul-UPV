@@ -8,6 +8,7 @@ import 'rooms_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:photo_view/photo_view.dart';
 
 class BuildingDetailsScreen extends StatefulWidget {
   final Building building;
@@ -420,6 +421,25 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
     );
   }
 
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: PhotoView(
+            imageProvider: NetworkImage(imageUrl),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2.0,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
@@ -436,12 +456,6 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
             return Text(building.name);
           },
         ),
-        actions: isAdmin ? [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => _editBuildingImage(context),
-          ),
-        ] : null,
       ),
       body: StreamBuilder<Building>(
         stream: _buildingService.getBuildingStream(widget.building.buildingId),
@@ -458,299 +472,372 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
               children: [
                 if (building.imageUrl != null && building.imageUrl!.isNotEmpty)
                   Stack(
-                    alignment: Alignment.topRight,
                     children: [
-                      Image.network(
-                        building.imageUrl!,
-                        width: double.infinity,
+                      Container(
                         height: 200,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                              height: 200,
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            building.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
                               color: Colors.grey[200],
                               child: const Center(
                                 child: Icon(Icons.image_not_supported, size: 50),
                               ),
                             ),
-                      ),
-                      if (isAdmin)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                color: Colors.white,
-                                onPressed: () => _editBuildingImage(context),
-                              ),
-                              if (building.imageUrl != null && building.imageUrl!.isNotEmpty)
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  color: Colors.white,
-                                  onPressed: () async {
-                                    final confirmed = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Delete Image'),
-                                        content: const Text('Are you sure you want to delete this image?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, true),
-                                            child: const Text('Delete'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirmed == true) {
-                                      await _buildingService.updateBuilding(
-                                        building.buildingId,
-                                        {'image_url': ''},
-                                      );
-                                    }
-                                  },
-                                ),
-                            ],
                           ),
                         ),
-                    ],
-                  )
-                else if (isAdmin)
-                  InkWell(
-                    onTap: () => _editBuildingImage(context),
-                    child: Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                      ),
+                      // Eye, Edit, Delete icons at the top right
+                      Positioned(
+                        top: 24,
+                        right: 32,
+                        child: Row(
                           children: [
-                            Icon(Icons.add_photo_alternate, size: 50),
-                            SizedBox(height: 8),
-                            Text('Add Building Image'),
+                            IconButton(
+                              icon: const Icon(Icons.remove_red_eye, color: Colors.white, size: 28),
+                              tooltip: 'View Fullscreen',
+                              onPressed: () => _showFullScreenImage(context, building.imageUrl!),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.white, size: 28),
+                              tooltip: 'Edit Building Image',
+                              onPressed: () => _editBuildingImage(context),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.white, size: 28),
+                              tooltip: 'Delete Building Image',
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Building Image'),
+                                    content: const Text('Are you sure you want to delete this building image?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed == true) {
+                                  await _buildingService.updateBuilding(
+                                    building.buildingId,
+                                    {'image_url': ''},
+                                  );
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Building image deleted successfully'), backgroundColor: Colors.green),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
                           ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
+                if (building.imageUrl == null || building.imageUrl!.isEmpty)
+                  if (isAdmin)
+                    InkWell(
+                      onTap: () => _editBuildingImage(context),
+                      child: Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_photo_alternate, size: 50),
+                              SizedBox(height: 8),
+                              Text('Add Building Image'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (isAdmin) ...[
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      ExpansionTile(
+                        title: const Text('Building Information'),
+                        initiallyExpanded: true,
+                        children: [
+                          if (isAdmin) ...[
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Building Information',
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Name',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                building.name,
+                                                style: const TextStyle(fontSize: 16),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    _buildEditableField(
+                                      context: context,
+                                      label: 'Also known as',
+                                      value: building.popular_names?.join(', ') ?? '',
+                                      onEdit: (value) => _buildingService.updateBuilding(
+                                        building.buildingId,
+                                        {
+                                          'popular_names': value.isEmpty 
+                                              ? [] 
+                                              : value.split(',').map((e) => e.trim()).toList(),
+                                        },
+                                      ),
+                                    ),
+                                    _buildEditableField(
+                                      context: context,
+                                      label: 'College',
+                                      value: building.college,
+                                      onEdit: (value) => _buildingService.updateBuilding(
+                                        building.buildingId,
+                                        {'college': value},
+                                      ),
+                                    ),
+                                    _buildEditableField(
+                                      context: context,
+                                      label: 'Address',
+                                      value: building.address,
+                                      onEdit: (value) => _buildingService.updateBuilding(
+                                        building.buildingId,
+                                        {'address': value},
+                                      ),
+                                    ),
+                                    _buildEditableField(
+                                      context: context,
+                                      label: 'Description',
+                                      value: building.description,
+                                      onEdit: (value) => _buildingService.updateBuilding(
+                                        building.buildingId,
+                                        {'description': value},
+                                      ),
+                                      multiLine: true,
+                                    ),
+                                    _buildEditableField(
+                                      context: context,
+                                      label: 'Status',
+                                      value: building.status,
+                                      onEdit: (value) => _buildingService.updateBuilding(
+                                        building.buildingId,
+                                        {'status': value},
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              building.name,
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            if (building.popular_names?.isNotEmpty ?? false) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Also known as: ${building.popular_names!.join(', ')}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                            Text(
+                              building.college,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(building.address),
+                            const SizedBox(height: 16),
+                            Text(
+                              building.description,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
                               children: [
+                                Icon(
+                                  building.status.toLowerCase() == 'active'
+                                      ? Icons.check_circle
+                                      : Icons.warning,
+                                  color: building.status.toLowerCase() == 'active'
+                                      ? Colors.green
+                                      : Colors.orange,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Building Information',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'Name',
-                                  value: building.name,
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'name': value},
-                                  ),
-                                ),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'Also known as',
-                                  value: building.popular_names?.join(', ') ?? '',
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {
-                                      'popular_names': value.isEmpty 
-                                          ? [] 
-                                          : value.split(',').map((e) => e.trim()).toList(),
-                                    },
-                                  ),
-                                ),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'College',
-                                  value: building.college,
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'college': value},
-                                  ),
-                                ),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'Address',
-                                  value: building.address,
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'address': value},
-                                  ),
-                                ),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'Description',
-                                  value: building.description,
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'description': value},
-                                  ),
-                                  multiLine: true,
-                                ),
-                                _buildEditableField(
-                                  context: context,
-                                  label: 'Status',
-                                  value: building.status,
-                                  onEdit: (value) => _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'status': value},
-                                  ),
+                                  building.status,
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                      ] else ...[
-                        Text(
-                          building.name,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        if (building.popular_names?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Also known as: ${building.popular_names!.join(', ')}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        Text(
-                          building.college,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(building.address),
-                        const SizedBox(height: 16),
-                        Text(
-                          building.description,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Icon(
-                              building.status.toLowerCase() == 'active'
-                                  ? Icons.check_circle
-                                  : Icons.warning,
-                              color: building.status.toLowerCase() == 'active'
-                                  ? Colors.green
-                                  : Colors.orange,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              building.status,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
                           ],
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      Text(
-                        'Floor Maps',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      StreamBuilder<List<FloorMap>>(
-                        stream: _buildingService.getFloorMaps(widget.building.buildingId),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasError) {
-                            return Text('Error: ${snapshot.error}');
-                          }
-
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-
-                          final floors = snapshot.data ?? [];
-                          if (floors.isEmpty) {
-                            return const Text('No floor maps available');
-                          }
-
-                          floors.sort((a, b) => a.floorLevel.compareTo(b.floorLevel));
-
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: floors.length,
-                            itemBuilder: (context, index) {
-                              final floor = floors[index];
-                              return Card(
-                                child: ListTile(
-                                  leading: const Icon(Icons.layers),
-                                  title: Text('Floor ${floor.floorLevel}'),
-                                  trailing: isAdmin
-                                      ? Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () async {
-                                                final confirmed = await showDialog<bool>(
-                                                  context: context,
-                                                  builder: (context) => AlertDialog(
-                                                    title: const Text('Delete Floor'),
-                                                    content: const Text('Are you sure you want to delete this floor? This will also delete all rooms and instructions associated with this floor.'),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () => Navigator.pop(context, false),
-                                                        child: const Text('Cancel'),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () => Navigator.pop(context, true),
-                                                        child: const Text('Delete'),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                                if (confirmed == true) {
-                                                  await _buildingService.deleteFloorMap(
-                                                    widget.building.buildingId,
-                                                    floor.floorId,
-                                                  );
-                                                }
-                                              },
+                      const SizedBox(height: 24),
+                      ExpansionTile(
+                        title: const Text('Floor Maps'),
+                        initiallyExpanded: true,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
+                            child: StreamBuilder<List<FloorMap>>(
+                              stream: _buildingService.getFloorMaps(widget.building.buildingId),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return Text('Error: ${snapshot.error}');
+                                }
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                final floors = snapshot.data ?? [];
+                                if (floors.isEmpty) {
+                                  return Column(
+                                    children: [
+                                      const Text('No floor maps available'),
+                                      if (isAdmin)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                          child: Center(
+                                            child: ElevatedButton.icon(
+                                              onPressed: () => _createFloorMap(context),
+                                              icon: const Icon(Icons.add),
+                                              label: const Text('Add Floor'),
                                             ),
-                                            const Icon(Icons.chevron_right),
-                                          ],
-                                        )
-                                      : const Icon(Icons.chevron_right),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => RoomsScreen(
-                                          building: widget.building,
-                                          floorMap: floor,
+                                          ),
                                         ),
+                                    ],
+                                  );
+                                }
+                                floors.sort((a, b) => a.floorLevel.compareTo(b.floorLevel));
+                                final itemCount = isAdmin ? floors.length + 1 : floors.length;
+                                return ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: itemCount,
+                                  itemBuilder: (context, index) {
+                                    if (isAdmin && index == floors.length) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _createFloorMap(context),
+                                            icon: const Icon(Icons.add),
+                                            label: const Text('Add Floor'),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    final floor = floors[index];
+                                    return Card(
+                                      child: ListTile(
+                                        leading: const Icon(Icons.layers),
+                                        title: Text('Floor ${floor.floorLevel}'),
+                                        trailing: isAdmin
+                                            ? Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  IconButton(
+                                                    icon: const Icon(Icons.delete),
+                                                    onPressed: () async {
+                                                      final confirmed = await showDialog<bool>(
+                                                        context: context,
+                                                        builder: (context) => AlertDialog(
+                                                          title: const Text('Delete Floor'),
+                                                          content: const Text('Are you sure you want to delete this floor? This will also delete all rooms and instructions associated with this floor.'),
+                                                          actions: [
+                                                            TextButton(
+                                                              onPressed: () => Navigator.pop(context, false),
+                                                              child: const Text('Cancel'),
+                                                            ),
+                                                            TextButton(
+                                                              onPressed: () => Navigator.pop(context, true),
+                                                              child: const Text('Delete'),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                      if (confirmed == true) {
+                                                        await _buildingService.deleteFloorMap(
+                                                          widget.building.buildingId,
+                                                          floor.floorId,
+                                                        );
+                                                      }
+                                                    },
+                                                  ),
+                                                  const Icon(Icons.chevron_right),
+                                                ],
+                                              )
+                                            : const Icon(Icons.chevron_right),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => RoomsScreen(
+                                                building: widget.building,
+                                                floorMap: floor,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     );
                                   },
-                                ),
-                              );
-                            },
-                          );
-                        },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -760,10 +847,19 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
           );
         },
       ),
-      floatingActionButton: isAdmin ? FloatingActionButton(
-        onPressed: () => _createFloorMap(context),
-        child: const Icon(Icons.add),
-      ) : null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Navigate to MapScreen with building location
+          Navigator.of(context).pushNamed(
+            '/map',
+            arguments: {
+              'building': widget.building,
+            },
+          );
+        },
+        icon: const Icon(Icons.directions),
+        label: const Text('See Directions'),
+      ),
     );
   }
 } 

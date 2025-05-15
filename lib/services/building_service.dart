@@ -375,4 +375,19 @@ class BuildingService {
               doc.id,
             ));
   }
+
+  Stream<List<Room>> getRoomsForSearch() async* {
+    final buildingsSnapshot = await buildingsCollection.get();
+    List<Room> allRooms = [];
+    for (final buildingDoc in buildingsSnapshot.docs) {
+      final floorsSnapshot = await buildingsCollection.doc(buildingDoc.id).collection('floormaps').get();
+      for (final floorDoc in floorsSnapshot.docs) {
+        final roomsSnapshot = await buildingsCollection.doc(buildingDoc.id).collection('floormaps').doc(floorDoc.id).collection('rooms').get();
+        for (final roomDoc in roomsSnapshot.docs) {
+          allRooms.add(Room.fromFirestore(roomDoc.data() as Map<String, dynamic>, roomDoc.id));
+        }
+      }
+    }
+    yield allRooms;
+  }
 }

@@ -175,26 +175,47 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
           instructions.sort((a, b) => a.order.compareTo(b.order));
 
           if (instructions.isEmpty) {
-            return const Center(child: Text('No instructions available'));
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Center(child: Text('No instructions available')),
+                if (isAdmin)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _addInstruction(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Instruction'),
+                      ),
+                    ),
+                  ),
+              ],
+            );
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: instructions.length,
+            itemCount: isAdmin ? instructions.length + 1 : instructions.length,
             itemBuilder: (context, index) {
+              if (isAdmin && index == instructions.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _addInstruction(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Instruction'),
+                    ),
+                  ),
+                );
+              }
               final instruction = instructions[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        instruction.text,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ),
                     if (instruction.imageUrls.isNotEmpty)
                       SizedBox(
                         height: 200,
@@ -217,21 +238,197 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
                           },
                         ),
                       ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        instruction.text,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
                     if (isAdmin)
                       ButtonBar(
                         children: [
                           TextButton.icon(
                             icon: const Icon(Icons.edit),
                             label: const Text('Edit'),
-                            onPressed: () {
-                              // TODO: Implement edit functionality
+                            onPressed: () async {
+                              // Edit dialog
+                              final textController = TextEditingController(text: instruction.text);
+                              List<String> imageUrls = List.from(instruction.imageUrls);
+                              Future<void> pickImage() async {
+                                try {
+                                  final XFile? image = await _picker.pickImage(
+                                    source: ImageSource.gallery,
+                                    maxWidth: 1024,
+                                    imageQuality: 85,
+                                  );
+                                  if (image != null) {
+                                    final file = File(image.path);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Uploading image...')),
+                                    );
+                                    try {
+                                      final response = await cloudinary.uploadFile(
+                                        CloudinaryFile.fromFile(
+                                          file.path,
+                                          folder: 'room_instructions',
+                                        ),
+                                      );
+                                      imageUrls.add(response.secureUrl);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).clearSnackBars();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Image uploaded successfully')),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).clearSnackBars();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Failed to upload image: \\${e.toString()}'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error picking image: \\${e.toString()}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                              await showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Edit Instruction'),
+                                  content: SingleChildScrollView(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TextField(
+                                          controller: textController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Instruction Text',
+                                            hintText: 'Enter the instruction...',
+                                          ),
+                                          maxLines: 3,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ElevatedButton.icon(
+                                          onPressed: pickImage,
+                                          icon: const Icon(Icons.add_photo_alternate),
+                                          label: const Text('Add Image'),
+                                        ),
+                                        if (imageUrls.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            height: 100,
+                                            child: ListView.builder(
+                                              scrollDirection: Axis.horizontal,
+                                              itemCount: imageUrls.length,
+                                              itemBuilder: (context, idx) {
+                                                return SizedBox(
+                                                  width: 110,
+                                                  child: Stack(
+                                                    children: [
+                                                      Padding(
+                                                        padding: const EdgeInsets.all(4.0),
+                                                        child: ClipRRect(
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          child: Image.network(
+                                                            imageUrls[idx],
+                                                            fit: BoxFit.cover,
+                                                            width: 100,
+                                                            height: 100,
+                                                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        top: 0,
+                                                        right: 0,
+                                                        child: IconButton(
+                                                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                                                          onPressed: () {
+                                                            imageUrls.removeAt(idx);
+                                                            setState(() {});
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        if (textController.text.isNotEmpty) {
+                                          await _buildingService.updateRoomInstruction(
+                                            widget.room.buildingId,
+                                            widget.room.floorId,
+                                            widget.room.roomId,
+                                            instruction.id,
+                                            {
+                                              'text': textController.text,
+                                              'image_urls': imageUrls,
+                                            },
+                                          );
+                                          if (mounted) Navigator.pop(context);
+                                        }
+                                      },
+                                      child: const Text('Save'),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           ),
                           TextButton.icon(
                             icon: const Icon(Icons.delete),
                             label: const Text('Delete'),
-                            onPressed: () {
-                              // TODO: Implement delete functionality
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Instruction'),
+                                  content: const Text('Are you sure you want to delete this instruction?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true) {
+                                await _buildingService.deleteRoomInstruction(
+                                  widget.room.buildingId,
+                                  widget.room.floorId,
+                                  widget.room.roomId,
+                                  instruction.id,
+                                );
+                              }
                             },
                           ),
                         ],
@@ -243,12 +440,6 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
           );
         },
       ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: () => _addInstruction(context),
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 } 

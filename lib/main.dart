@@ -64,6 +64,11 @@ class MyApp extends StatelessWidget {
           '/signup': (context) => const SignUpScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/home': (context) => const MainScreen(),
+          '/map': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+            final building = args != null ? args['building'] as Building? : null;
+            return MapScreen(building: building);
+          },
         },
       ),
     );
@@ -122,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: _onItemTapped,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.map), label: 'Map'),
-          NavigationDestination(icon: Icon(Icons.list), label: 'Buildings'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
         ],
       ),
     );

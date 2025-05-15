@@ -6,6 +6,10 @@ import '../models/room.dart';
 import '../services/building_service.dart';
 import '../providers/user_provider.dart';
 import 'room_instructions_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:photo_view/photo_view.dart';
 
 class RoomsScreen extends StatefulWidget {
   final Building building;
@@ -23,6 +27,8 @@ class RoomsScreen extends StatefulWidget {
 
 class _RoomsScreenState extends State<RoomsScreen> {
   final BuildingService _buildingService = BuildingService();
+  final ImagePicker _picker = ImagePicker();
+  final cloudinary = CloudinaryPublic('dq0tsf6xm', 'ml_default', cache: false);
 
   Future<void> _editField(BuildContext context, String title, String currentValue, Function(String) onSave) async {
     final controller = TextEditingController(text: currentValue);
@@ -488,6 +494,76 @@ class _RoomsScreenState extends State<RoomsScreen> {
     }
   }
 
+  Future<void> _editFloorMapImage(BuildContext context) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Uploading floor map image...')),
+          );
+        }
+        final file = File(image.path);
+        final response = await cloudinary.uploadFile(
+          CloudinaryFile.fromFile(
+            file.path,
+            folder: 'buildings/${widget.building.buildingId}/floors/${widget.floorMap.floorId}',
+          ),
+        );
+        final hadExistingImage = widget.floorMap.image.isNotEmpty;
+        await _buildingService.updateFloorMapImage(
+          widget.building.buildingId,
+          widget.floorMap.floorId,
+          response.secureUrl,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(hadExistingImage
+                  ? 'Floor ${widget.floorMap.floorLevel} image updated successfully'
+                  : 'Floor ${widget.floorMap.floorLevel} image added successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading floor map image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: PhotoView(
+            imageProvider: NetworkImage(imageUrl),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2.0,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
@@ -515,33 +591,91 @@ class _RoomsScreenState extends State<RoomsScreen> {
           return Column(
             children: [
               if (widget.floorMap.image.isNotEmpty)
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                Stack(
+                  children: [
+                    Container(
+                      height: 200,
+                      width: double.infinity,
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      widget.floorMap.image,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Icon(Icons.image_not_supported, size: 50),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          widget.floorMap.image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.image_not_supported, size: 50),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    // Eye, Edit, Delete icons at the top right
+                    Positioned(
+                      top: 24,
+                      right: 32,
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_red_eye, color: Colors.white, size: 28),
+                            tooltip: 'View Fullscreen',
+                            onPressed: () => _showFullScreenImage(context, widget.floorMap.image),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.white, size: 28),
+                            tooltip: 'Edit Floor Map Image',
+                            onPressed: () => _editFloorMapImage(context),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.white, size: 28),
+                            tooltip: 'Delete Floor Map Image',
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Floor Map Image'),
+                                  content: const Text('Are you sure you want to delete this floor map image?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true) {
+                                await _buildingService.updateFloorMapImage(
+                                  widget.building.buildingId,
+                                  widget.floorMap.floorId,
+                                  '',
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Floor map image deleted successfully'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 )
               else if (isAdmin)
                 Container(
@@ -553,9 +687,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: InkWell(
-                    onTap: () {
-                      // TODO: Implement floor map image upload
-                    },
+                    onTap: () => _editFloorMapImage(context),
                     child: const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -576,8 +708,20 @@ class _RoomsScreenState extends State<RoomsScreen> {
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: rooms.length,
+                    itemCount: isAdmin ? rooms.length + 1 : rooms.length,
                     itemBuilder: (context, index) {
+                      if (isAdmin && index == rooms.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _createRoom(context),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Room'),
+                            ),
+                          ),
+                        );
+                      }
                       final room = rooms[index];
                       return Card(
                         child: ListTile(
@@ -622,12 +766,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
           );
         },
       ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: () => _createRoom(context),
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 } 

@@ -407,15 +407,13 @@ class _BuildingListScreenState extends State<BuildingListScreen> {
           Expanded(
             child: StreamBuilder<List<Building>>(
               stream: _buildingService.buildings,
-        builder: (context, snapshot) {
+              builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 final buildings = snapshot.data ?? [];
                 final filteredBuildings = buildings.where((building) {
                   final name = building.name.toLowerCase();
@@ -425,15 +423,27 @@ class _BuildingListScreenState extends State<BuildingListScreen> {
                          popularNames.contains(_searchQuery) ||
                          college.contains(_searchQuery);
                 }).toList();
-
                 if (filteredBuildings.isEmpty) {
                   return const Center(child: Text('No buildings found'));
                 }
-
-          return ListView.builder(
+                final itemCount = isAdmin ? filteredBuildings.length + 1 : filteredBuildings.length;
+                return ListView.builder(
                   padding: const EdgeInsets.all(8),
-                  itemCount: filteredBuildings.length,
-            itemBuilder: (context, index) {
+                  itemCount: itemCount,
+                  itemBuilder: (context, index) {
+                    if (isAdmin && index == filteredBuildings.length) {
+                      // Add button at the end for admins
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Center(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _createBuilding(context),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Building'),
+                          ),
+                        ),
+                      );
+                    }
                     final building = filteredBuildings[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -463,7 +473,7 @@ class _BuildingListScreenState extends State<BuildingListScreen> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         trailing: const Icon(Icons.chevron_right),
-                onTap: () {
+                        onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -474,18 +484,14 @@ class _BuildingListScreenState extends State<BuildingListScreen> {
                           );
                         },
                       ),
-              );
-            },
-          );
-        },
-      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
-      floatingActionButton: isAdmin ? FloatingActionButton(
-        onPressed: () => _createBuilding(context),
-        child: const Icon(Icons.add),
-      ) : null,
     );
   }
 }

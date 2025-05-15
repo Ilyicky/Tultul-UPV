@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.untitled"
+    namespace = "com.example.tultulupv"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
