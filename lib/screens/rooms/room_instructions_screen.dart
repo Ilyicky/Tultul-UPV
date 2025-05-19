@@ -585,7 +585,6 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
                 ),
               );
             }
-            debugPrint('Error in See Directions: $e');
           }
         },
         icon: const Icon(Icons.directions),

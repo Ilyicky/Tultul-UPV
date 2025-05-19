@@ -4,18 +4,25 @@ import 'package:latlong2/latlong.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'services/building_service.dart';
-import 'models/building.dart';
+import 'package:provider/provider.dart';
+
+//App Screens
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/map/map_screen.dart';
 import 'screens/building_list_screen.dart';
 import 'screens/main_screen.dart';
+
+//Models
+import 'models/building.dart';
+
+//Providers
 import 'providers/buildings_provider.dart';
 import 'providers/user_provider.dart';
-import 'package:provider/provider.dart';
+
 import 'theme/app_theme.dart';
+import 'services/building_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,7 +98,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         final userProvider = Provider.of<UserProvider>(context, listen: false);
-        userProvider.setUser(snapshot.data);
+        userProvider.setUser(snapshot.data!);
 
         if (!snapshot.hasData) {
           return const LoginScreen();

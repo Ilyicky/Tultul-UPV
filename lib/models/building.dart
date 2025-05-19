@@ -1,9 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Building {
   final String buildingId;
   final String name;
-  final List<String>? popular_names;
+  final List<String>? popularNames;
   final String description;
   final String college;
   final String address;
@@ -16,7 +14,7 @@ class Building {
   Building({
     required this.buildingId,
     required this.name,
-    this.popular_names,
+    this.popularNames,
     required this.description,
     required this.college,
     required this.address,
@@ -43,7 +41,7 @@ class Building {
     return Building(
       buildingId: id,
       name: data['name'] ?? '',
-      popular_names: List<String>.from(data['popular_names'] ?? []),
+      popularNames: List<String>.from(data['popular_names'] ?? []),
       description: data['description'] ?? '',
       college: data['college'] ?? '',
       address: data['address'] ?? '',
@@ -57,7 +55,7 @@ class Building {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'popular_names': popular_names,
+      'popular_names': popularNames,
       'description': description,
       'college': college,
       'address': address,

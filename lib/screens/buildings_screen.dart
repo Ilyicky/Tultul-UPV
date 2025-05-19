@@ -61,7 +61,7 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                     buildings.where((building) {
                       final name = building.name.toLowerCase();
                       final popularNames =
-                          building.popular_names?.join(' ').toLowerCase() ?? '';
+                          building.popularNames?.join(' ').toLowerCase() ?? '';
                       final college = building.college.toLowerCase();
                       final description = building.description.toLowerCase();
                       return name.contains(_searchQuery) ||

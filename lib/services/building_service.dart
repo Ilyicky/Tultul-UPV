@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/building.dart';
-import '../models/floor_map.dart';
-import '../models/room.dart';
-import '../models/room_instruction.dart';
+import 'package:tultul_upv/models/building.dart';
+import 'package:tultul_upv/models/floor_map.dart';
+import 'package:tultul_upv/models/room.dart';
+import 'package:tultul_upv/models/room_instruction.dart';
 
 class BuildingService {
   final CollectionReference buildingsCollection = FirebaseFirestore.instance
@@ -64,7 +64,7 @@ class BuildingService {
         .map((snapshot) {
           return snapshot.docs.map((doc) {
             return FloorMap.fromFirestore(
-              doc.data() as Map<String, dynamic>,
+              doc.data(),
               doc.id,
             );
           }).toList();
@@ -85,7 +85,7 @@ class BuildingService {
         .map((snapshot) {
           return snapshot.docs.map((doc) {
             return Room.fromFirestore(
-              doc.data() as Map<String, dynamic>,
+              doc.data(),
               doc.id,
             );
           }).toList();
@@ -169,7 +169,7 @@ class BuildingService {
         .map((snapshot) {
           return snapshot.docs.map((doc) {
             return RoomInstruction.fromFirestore(
-              doc.data() as Map<String, dynamic>,
+              doc.data(),
               doc.id,
             );
           }).toList();
@@ -177,18 +177,38 @@ class BuildingService {
   }
 
   Future<String> createBuilding(Map<String, dynamic> data) async {
-    final docRef = await buildingsCollection.add({
-      'name': data['name'] ?? '',
-      'popular_names': data['popular_names'] ?? [],
-      'description': data['description'] ?? '',
-      'college': data['college'] ?? '',
-      'address': data['address'] ?? '',
-      'latitude': data['latitude'],
-      'longitude': data['longitude'],
-      'status': data['status'] ?? 'Active',
-      'image_url': data['image_url'] ?? '',
-    });
-    return docRef.id;
+    try {
+      // Validate required fields
+      if (data['name'] == null || data['name'].toString().trim().isEmpty) {
+        throw Exception('Building name is required');
+      }
+      if (data['college'] == null || data['college'].toString().trim().isEmpty) {
+        throw Exception('College is required');
+      }
+      if (data['address'] == null || data['address'].toString().trim().isEmpty) {
+        throw Exception('Address is required');
+      }
+      if (data['description'] == null || data['description'].toString().trim().isEmpty) {
+        throw Exception('Description is required');
+      }
+      if (data['latitude'] == null) {
+        throw Exception('Latitude is required');
+      }
+      if (data['longitude'] == null) {
+        throw Exception('Longitude is required');
+      }
+
+      final buildingData = {
+        ...data,
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+
+      final docRef = await buildingsCollection.add(buildingData);
+      return docRef.id;
+    } catch (e, stackTrace) {
+      throw Exception('Failed to create building: $e');
+    }
   }
 
   Future<String> createFloorMap(
@@ -290,27 +310,27 @@ class BuildingService {
       // Add default buildings
       final defaultBuildings = [
         {
-          'name': 'College of Engineering',
-          'popular_names': ['Engineering Building', 'COE'],
-          'description': 'Main building for engineering courses',
-          'college': 'College of Engineering',
-          'address': 'CPU Campus',
-          'latitude': 10.7275,
-          'longitude': 122.5453,
+          'name': 'College of Arts and Sciences',
+          'popular_names': ['CAS', 'AS'],
+          'description': 'A large college with 4 floors.',
+          'college': 'College of Arts and Sciences',
+          'address': '123 Library St.',
+          'latitude': 10.640849,
+          'longitude': 122.227615,
           'status': 'Active',
           'image_url': '',
         },
-        {
-          'name': 'College of Nursing',
-          'popular_names': ['Nursing Building', 'CON'],
-          'description': 'Main building for nursing courses',
-          'college': 'College of Nursing',
-          'address': 'CPU Campus',
-          'latitude': 10.7280,
-          'longitude': 122.5460,
-          'status': 'Active',
-          'image_url': '',
-        },
+        // {
+        //   'name': 'College of Nursing',
+        //   'popular_names': ['Nursing Building', 'CON'],
+        //   'description': 'Main building for nursing courses',
+        //   'college': 'College of Nursing',
+        //   'address': 'CPU Campus',
+        //   'latitude': 10.7280,
+        //   'longitude': 122.5460,
+        //   'status': 'Active',
+        //   'image_url': '',
+        // },
       ];
 
       // Add buildings to Firestore
@@ -395,12 +415,12 @@ class BuildingService {
             .collection('rooms')
             .get();
 
-    // Check if any existing room has the same name (case-insensitive) AND type, excluding the current room if editing
+    // Check if any existing room has the same name
     return querySnapshot.docs.any((doc) {
       if (excludeRoomId != null && doc.id == excludeRoomId) {
         return false; // Skip the current room when editing
       }
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       final existingName = (data['name'] as String?)?.toUpperCase() ?? '';
       final existingType = (data['type'] as String?)?.toLowerCase() ?? '';
       return existingName == roomName.toUpperCase() &&
@@ -440,7 +460,7 @@ class BuildingService {
         for (final roomDoc in roomsSnapshot.docs) {
           allRooms.add(
             Room.fromFirestore(
-              roomDoc.data() as Map<String, dynamic>,
+              roomDoc.data(),
               roomDoc.id,
             ),
           );
@@ -461,5 +481,18 @@ class BuildingService {
     }
 
     return Building.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
+  }
+
+  Building _buildBuildingFromDocument(DocumentSnapshot doc) {
+    if (doc.id.isEmpty) {
+      return Building.fromFirestore({}, '');
+    }
+
+    try {
+      final data = doc.data() as Map<String, dynamic>;
+      return Building.fromFirestore(data, doc.id);
+    } catch (e) {
+      return Building.fromFirestore({}, '');
+    }
   }
 }

@@ -744,7 +744,7 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                                       context: context,
                                       label: 'Also known as',
                                       value:
-                                          building.popular_names?.join(', ') ??
+                                          building.popularNames?.join(', ') ??
                                           '',
                                       onEdit:
                                           (value) =>
@@ -817,11 +817,11 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                               building.name,
                               style: Theme.of(context).textTheme.headlineMedium,
                             ),
-                            if (building.popular_names?.isNotEmpty ??
+                            if (building.popularNames?.isNotEmpty ??
                                 false) ...[
                               const SizedBox(height: 8),
                               Text(
-                                'Also known as: ${building.popular_names!.join(', ')}',
+                                'Also known as: ${building.popularNames!.join(', ')}',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],

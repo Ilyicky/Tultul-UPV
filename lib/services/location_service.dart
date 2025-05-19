@@ -40,7 +40,7 @@ class LocationService {
     return Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters
+        distanceFilter: 10, // update every 10 meters
       ),
     ).map((position) => LatLng(position.latitude, position.longitude));
   }

@@ -30,7 +30,12 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _BuildingRequestsList extends StatelessWidget {
+class _BuildingRequestsList extends StatefulWidget {
+  @override
+  State<_BuildingRequestsList> createState() => _BuildingRequestsListState();
+}
+
+class _BuildingRequestsListState extends State<_BuildingRequestsList> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -112,7 +117,14 @@ class _BuildingRequestsList extends StatelessWidget {
           .doc(requestId)
           .delete();
     } catch (e) {
-      debugPrint('Error approving request: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error approving request: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -123,12 +135,24 @@ class _BuildingRequestsList extends StatelessWidget {
           .doc(requestId)
           .delete();
     } catch (e) {
-      debugPrint('Error rejecting request: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error rejecting request: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
 
-class _RoomRequestsList extends StatelessWidget {
+class _RoomRequestsList extends StatefulWidget {
+  @override
+  State<_RoomRequestsList> createState() => _RoomRequestsListState();
+}
+
+class _RoomRequestsListState extends State<_RoomRequestsList> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(

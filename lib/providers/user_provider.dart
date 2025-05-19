@@ -7,78 +7,36 @@ import 'package:flutter/foundation.dart';
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
   bool _loading = true;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserModel? get user => _user;
   bool get loading => _loading;
 
-  Future<void> setUser(User? firebaseUser) async {
-    if (firebaseUser == null) {
-      clearUser();
-      return;
-    }
-
-    _loading = true;
-    notifyListeners();
-
+  Future<void> setUser(User firebaseUser) async {
     try {
-      if (kDebugMode) {
-        print('Fetching user data for: ${firebaseUser.uid}');
-      }
-
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(firebaseUser.uid)
-              .get();
-
+      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      
       if (doc.exists) {
-        if (kDebugMode) {
-          print('User document data: ${doc.data()}');
-        }
         _user = UserModel.fromFirestore(doc);
-        if (kDebugMode) {
-          print('User role: ${_user?.role}');
-          print('Is admin: ${_user?.isAdmin()}');
-        }
       } else {
-        if (kDebugMode) {
-          print('No user document found, creating new user');
-        }
-        // Create a new user document if it doesn't exist
-        final newUser = UserModel(
+        _user = UserModel(
           uid: firebaseUser.uid,
-          email: firebaseUser.email ?? '',
-          name:
-              firebaseUser.displayName ??
-              firebaseUser.email?.split('@')[0] ??
-              'User',
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName ?? firebaseUser.email!.split('@')[0],
           role: UserRole.user,
-          bookmarkedBuildings: [],
-          bookmarkedRooms: [],
         );
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .set(newUser.toMap());
-        _user = newUser;
-        if (kDebugMode) {
-          print('Created new user with role: ${_user?.role}');
-        }
+        await _firestore.collection('users').doc(firebaseUser.uid).set(_user!.toMap());
       }
+      notifyListeners();
     } catch (e) {
-      if (kDebugMode) {
-        print('Error setting user: $e');
-      }
       _user = null;
+      notifyListeners();
     }
-
-    _loading = false;
-    notifyListeners();
   }
 
   Future<void> setupUser() async {
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    await setUser(firebaseUser);
+    await setUser(firebaseUser!);
   }
 
   Future<void> updateBookmarks({String? buildingId, String? roomId}) async {

@@ -7,7 +7,7 @@ import 'package:tultul_upv/screens/buildings/buildings_list_screen.dart';
 import 'package:tultul_upv/screens/bookmarks/bookmarks_screen.dart';
 import 'package:tultul_upv/screens/profile/profile_screen.dart';
 import 'package:tultul_upv/screens/admin/dashboard_screen.dart';
-import 'package:flutter/foundation.dart';
+import 'package:tultul_upv/screens/buildings/admin_buildings_list_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final int initialIndex;
@@ -36,9 +36,6 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    if (kDebugMode) {
-      print('MainScreen initialized with index: $_selectedIndex');
-    }
   }
 
   @override
@@ -47,15 +44,6 @@ class _MainScreenState extends State<MainScreen> {
       builder: (context, userProvider, child) {
         final isAdmin = userProvider.user?.isAdmin() ?? false;
 
-        if (kDebugMode) {
-          print(
-            'MainScreen rebuild - Current user: ${userProvider.user?.email}',
-          );
-          print('MainScreen rebuild - Is admin: $isAdmin');
-          print('MainScreen rebuild - Selected index: $_selectedIndex');
-        }
-
-        // Define navigation items based on user role
         final List<NavigationDestination> destinations =
             isAdmin
                 ? [
@@ -95,7 +83,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ];
 
-        // Define screens based on user role
+        // screens to be shown based on user role
         final List<Widget> screens =
             isAdmin
                 ? [
@@ -104,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
                     targetRoomId: widget.targetRoomId,
                     targetFloorId: widget.targetFloorId,
                   ),
-                  const BuildingsListScreen(),
+                  const AdminBuildingsListScreen(),
                   const DashboardScreen(),
                   const ProfileScreen(),
                 ]
@@ -119,21 +107,11 @@ class _MainScreenState extends State<MainScreen> {
                   const ProfileScreen(),
                 ];
 
-        if (kDebugMode) {
-          print('Navigation destinations count: ${destinations.length}');
-          print(
-            'Navigation items: ${destinations.map((d) => d.label).join(', ')}',
-          );
-        }
-
         return Scaffold(
           body: screens[_selectedIndex],
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
-              if (kDebugMode) {
-                print('Navigation selected: ${destinations[index].label}');
-              }
               setState(() {
                 _selectedIndex = index;
               });

@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:tultul_upv/models/building.dart';
-import 'package:tultul_upv/services/building_service.dart';
-import 'package:tultul_upv/screens/buildings/details/building_details_screen.dart';
-import 'package:tultul_upv/models/room.dart';
-import 'package:tultul_upv/screens/rooms/room_instructions_screen.dart';
 import 'package:provider/provider.dart';
+
+//App Screens
+import 'package:tultul_upv/screens/rooms/room_instructions_screen.dart';
+import 'package:tultul_upv/screens/buildings/details/building_details_screen.dart';
+
+//Providers
 import 'package:tultul_upv/providers/user_provider.dart';
-import 'package:photo_view/photo_view.dart';
+
+//Services
+import 'package:tultul_upv/services/building_service.dart';
+
+//Models
+import 'package:tultul_upv/models/building.dart';
+import 'package:tultul_upv/models/room.dart';
+
 
 class BuildingsListScreen extends StatefulWidget {
   const BuildingsListScreen({super.key});
@@ -94,7 +102,7 @@ class _BuildingsListScreenState extends State<BuildingsListScreen> {
                       buildings.where((building) {
                         final name = building.name.toLowerCase();
                         final popularNames =
-                            building.popular_names?.join(' ').toLowerCase() ??
+                            building.popularNames?.join(' ').toLowerCase() ??
                             '';
                         final college = building.college.toLowerCase();
                         return name.contains(_searchQuery) ||

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/theme_toggle.dart';
+import 'package:tultul_upv/theme/app_theme.dart';
+import 'package:tultul_upv/widgets/custom_button.dart';
+
+//Components
+
+//Provider
+//import here auth_provider
+//import here user_provider
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -11,14 +18,16 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  
+  final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
 
   @override
   void dispose() {
@@ -94,8 +103,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sign Up'),
-        actions: const [ThemeToggle()],
+        title: const Text(
+          'Tultul UPV Sign Up Page',
+          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFF800000),
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -106,11 +119,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.business, size: 80, color: Colors.blue),
+                Image.asset('assets/images/upv.png', width: 100, height: 100),
                 const SizedBox(height: 32),
                 const Text(
                   'Welcome',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: AppTheme.titleStyle,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -210,19 +223,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _signUp,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child:
-                      _isLoading
-                          ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Text('Sign Up'),
+                customButton(
+                  'Sign Up',
+                  _signUp,
+                  isLoading: _isLoading,
                 ),
                 const SizedBox(height: 16),
                 Row(

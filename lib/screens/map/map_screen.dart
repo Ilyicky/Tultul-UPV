@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:tultul_upv/services/building_service.dart';
-import 'package:tultul_upv/models/building.dart';
+import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
+
+//App Screens
+import 'package:tultul_upv/screens/main_screen.dart';
+import 'package:tultul_upv/screens/buildings/details/building_details_screen.dart';
+import 'package:tultul_upv/screens/rooms/room_instructions_screen.dart';
+
+//Services
 import 'package:tultul_upv/services/location_service.dart';
 import 'package:tultul_upv/services/directions_service.dart';
+import 'package:tultul_upv/services/building_service.dart';
+
+//Models
+import 'package:tultul_upv/models/building.dart';
+
+//Constants
 import 'package:tultul_upv/widgets/pulsing_circle.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:tultul_upv/screens/buildings/images/building_image_screen.dart';
-import 'dart:math';
-import 'package:tultul_upv/screens/buildings/details/building_details_screen.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:tultul_upv/screens/rooms/room_instructions_screen.dart';
-import 'package:tultul_upv/providers/user_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:tultul_upv/screens/buildings/buildings_list_screen.dart';
-import 'package:tultul_upv/screens/main_screen.dart';
+
 
 class MapScreen extends StatefulWidget {
   final Building? building;
@@ -44,7 +48,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   final DirectionsService _directionsService = DirectionsService();
   final BuildingService _buildingService = BuildingService();
   bool _isNavigating = false;
-  static const double _indoorNavigationThreshold = 50.0; // meters
+  static const double _indoorNavigationThreshold = 50.0; // in meters
 
   @override
   void initState() {
@@ -53,16 +57,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    if (widget.building != null) {
+    if (widget.building != null) 
+    {
       _selectedBuilding = widget.building;
-      // Schedule showing building details after the first frame
+
+      // Show building details after the first frame
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _selectedBuilding != null) {
+        if (mounted && _selectedBuilding != null) 
+        {
           _showBuildingDetails(_selectedBuilding!, context);
         }
       });
     }
-    _setupLocation();
+    _setupLocation(); //ask for location permission and get current location
   }
 
   @override
@@ -76,10 +83,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       begin: _mapController.camera.center.latitude,
       end: destLocation.latitude,
     );
+
     final lngTween = Tween<double>(
       begin: _mapController.camera.center.longitude,
       end: destLocation.longitude,
     );
+
     final zoomTween = Tween<double>(
       begin: _mapController.camera.zoom,
       end: destZoom,
@@ -103,12 +112,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _zoomIn() {
-    final newZoom = min(_mapController.camera.zoom + 1, 20.0);
+    final newZoom = min(_mapController.camera.zoom + 1, 20.0); // 20 is the max zoom in
     animatedMapMove(_mapController.camera.center, newZoom);
   }
 
   void _zoomOut() {
-    final newZoom = max(_mapController.camera.zoom - 1, 3.0);
+    final newZoom = max(_mapController.camera.zoom - 1, 3.0); // 3 is the min zoom out
     animatedMapMove(_mapController.camera.center, newZoom);
   }
 
@@ -116,12 +125,16 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     if (_currentLocation != null &&
         _selectedBuilding != null &&
         _selectedBuilding!.latitude != null &&
-        _selectedBuilding!.longitude != null) {
+        _selectedBuilding!.longitude != null) 
+    {
+      // request route points from mapbox between current loc and selected building
       final points = await _directionsService.getRoutePoints(
         _currentLocation!,
         LatLng(_selectedBuilding!.latitude!, _selectedBuilding!.longitude!),
       );
-      if (mounted) {
+
+      if (mounted) 
+      {
         setState(() {
           _routePoints = points;
         });
@@ -131,14 +144,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   Future<void> _setupLocation() async {
     final hasPermission = await LocationService.requestPermission();
-    if (hasPermission) {
+    if (hasPermission) 
+    {
       final location = await LocationService.getCurrentLocation();
-      if (location != null && mounted) {
+
+      if (location != null && mounted) 
+      {
         setState(() => _currentLocation = location);
-        if (_selectedBuilding != null) {
+
+        if (_selectedBuilding != null) 
+        {
           _updateRoute();
+
           if (_selectedBuilding!.latitude != null &&
-              _selectedBuilding!.longitude != null) {
+              _selectedBuilding!.longitude != null) 
+          {
             final bounds = LatLngBounds.fromPoints([
               location,
               LatLng(
@@ -146,6 +166,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 _selectedBuilding!.longitude!,
               ),
             ]);
+
             final zoomLevel = _calculateZoomLevel(
               location,
               LatLng(
@@ -153,6 +174,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 _selectedBuilding!.longitude!,
               ),
             );
+            
             _mapController.move(bounds.center, zoomLevel);
           }
         } else {
@@ -160,57 +182,61 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         }
       }
 
-      // Listen to location updates
+      
       LocationService.getLocationStream().listen((location) {
-        if (mounted) {
-          setState(() => _currentLocation = location);
-          if (_followingUser) {
-            animatedMapMove(location, _defaultZoom);
+        if (mounted) 
+        {
+          setState(() => _currentLocation = location); // update location
+          if (_followingUser) 
+          {
+            animatedMapMove(location, _defaultZoom); // animate map to new location
           }
-          // Update route when location changes
-          _updateRoute();
+          _updateRoute(); // update route so that path is accurate
         }
       });
     }
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      final position = await LocationService.getCurrentLocation();
-      if (position != null) {
-        setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-          _followingUser = true;
-        });
-        animatedMapMove(_currentLocation!, _defaultZoom);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not get current location. Please try again.',
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Error getting current location. Please check location permissions.',
-            ),
-          ),
-        );
-      }
-    }
-  }
+  // Future<void> _getCurrentLocation() async {
+  //   try {
+  //     final position = await LocationService.getCurrentLocation();
+  //     if (position != null) {
+  //       setState(() {
+  //         _currentLocation = LatLng(position.latitude, position.longitude);
+  //         _followingUser = true;
+  //       });
+  //       animatedMapMove(_currentLocation!, _defaultZoom);
+  //     } else {
+  //       if (mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(
+  //             content: Text(
+  //               'Could not get current location. Please try again.',
+  //             ),
+  //           ),
+  //         );
+  //       }
+  //     }
+  //   } catch (e) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text(
+  //             'Error getting current location. Please check location permissions.',
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
 
   String _calculateDistance(LatLng start, LatLng end) {
     const Distance distance = Distance();
+
+    // calculate distance between user loc and selected building
     final meters = distance.as(LengthUnit.Meter, start, end);
-    if (meters < 1000) {
+    if (meters < 1000) 
+    {
       return '${meters.toStringAsFixed(0)}m';
     } else {
       final km = meters / 1000;
@@ -224,7 +250,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
     // Adjust zoom level based on distance
     if (meters < 100) {
-      return 18.0; // Very close, zoom in
+      return 18.0; // very close, more zoom
     } else if (meters < 500) {
       return 17.0;
     } else if (meters < 1000) {
@@ -232,23 +258,27 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     } else if (meters < 2000) {
       return 15.0;
     } else {
-      return 14.0; // Far away, zoom out more
+      return 14.0; // far away, less zoom
     }
   }
 
   void _startNavigation(Building building) {
-    if (building.latitude != null && building.longitude != null) {
+    if (building.latitude != null && building.longitude != null) 
+    {
       setState(() {
         _selectedBuilding = building;
         _isNavigating = true;
-        _followingUser = false;
+        _followingUser = true;
       });
+
       _updateRoute();
-      if (_currentLocation != null) {
+      if (_currentLocation != null) 
+      {
         final bounds = LatLngBounds.fromPoints([
           _currentLocation!,
           LatLng(building.latitude!, building.longitude!),
         ]);
+
         final zoomLevel = _calculateZoomLevel(
           _currentLocation!,
           LatLng(building.latitude!, building.longitude!),
@@ -265,16 +295,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _routePoints = [];
       _followingUser = true;
     });
-    if (_currentLocation != null) {
+    if (_currentLocation != null) 
+    {
       animatedMapMove(_currentLocation!, _defaultZoom);
     }
   }
 
+  // Check if the user is near the selected buildling and should start indoor navigation
   void _checkIndoorNavigation() {
     if (_currentLocation != null &&
         _selectedBuilding != null &&
         _selectedBuilding!.latitude != null &&
-        _selectedBuilding!.longitude != null) {
+        _selectedBuilding!.longitude != null) 
+    {
       const Distance distance = Distance();
       final meters = distance.as(
         LengthUnit.Meter,
@@ -282,20 +315,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         LatLng(_selectedBuilding!.latitude!, _selectedBuilding!.longitude!),
       );
 
-      if (meters <= _indoorNavigationThreshold) {
-        // If we have a target room, navigate directly to room instructions
-        if (widget.targetRoomId != null && widget.targetFloorId != null) {
+      // if the distance is less than 50m, show the room instructions
+      if (meters <= _indoorNavigationThreshold) 
+      {
+      
+        if (widget.targetRoomId != null && widget.targetFloorId != null) 
+        {
           // Get the room details first
           _buildingService
               .getRooms(_selectedBuilding!.buildingId, widget.targetFloorId!)
               .first
               .then((rooms) {
+                // find the target room from the list of rooms
                 final targetRoom = rooms.firstWhere(
                   (room) => room.roomId == widget.targetRoomId,
                   orElse: () => throw Exception('Room not found'),
                 );
 
-                if (mounted) {
+                if (mounted) 
+                {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -306,7 +344,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 }
               })
               .catchError((error) {
-                // If room not found, fall back to building details
+                // If room not found, show the building details instead
                 if (mounted) {
                   Navigator.pushReplacement(
                     context,
@@ -339,12 +377,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _showBuildingDetails(Building building, BuildContext context) {
-    if (building.latitude != null && building.longitude != null) {
+    if (building.latitude != null && building.longitude != null) 
+    {
       // Just center the map on the building without starting navigation
       animatedMapMove(
         LatLng(building.latitude!, building.longitude!),
         _defaultZoom,
       );
+
       setState(() {
         _followingUser = false;
         _selectedBuilding = building; // Just set the selected building
@@ -370,7 +410,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       fit: BoxFit.cover,
                       errorBuilder:
                           (context, error, stackTrace) =>
-                              const Icon(Icons.error),
+                              const Icon(Icons.error), // error icon if image is not found
                     ),
                   ),
                 const SizedBox(height: 16),
@@ -411,19 +451,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 8),
-                if (building.popular_names?.isNotEmpty ?? false)
+                if (building.popularNames?.isNotEmpty ?? false)
                   Text(
-                    'Also known as: ${building.popular_names}',
+                    'Also known as: ${building.popularNames}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 const SizedBox(height: 8),
-                Text('College: ${building.college}'),
-                Text('Address: ${building.address}'),
-                const SizedBox(height: 8),
-                Text(
-                  building.description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                // Text('College: ${building.college}'),
+                // Text('Address: ${building.address}'),
+                // const SizedBox(height: 8),
+                // Text(
+                //   building.description,
+                //   style: Theme.of(context).textTheme.bodyMedium,
+                // ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -442,6 +482,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -464,6 +505,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     const SizedBox(width: 8),
+
                     Expanded(
                       child: TextButton(
                         style: TextButton.styleFrom(
@@ -506,7 +548,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
 
     final buildingService = BuildingService();
-    final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
+    //final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Map')),
@@ -561,7 +603,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               height: 20,
                               child: GestureDetector(
                                 onTap: () {
-                                  // Only show the building details popup when marker is tapped
                                   _showBuildingDetails(building, context);
                                 },
                                 child: Icon(
@@ -574,8 +615,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                             );
-                          })
-                          .toList(),
+                          }),
                       if (_currentLocation != null)
                         Marker(
                           point: _currentLocation!,
@@ -714,11 +754,11 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               if (_selectedBuilding!
-                                      .popular_names
+                                      .popularNames
                                       ?.isNotEmpty ??
                                   false)
                                 Text(
-                                  'Also known as: ${_selectedBuilding!.popular_names!.join(", ")}',
+                                  'Also known as: ${_selectedBuilding!.popularNames!.join(", ")}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                             ],
