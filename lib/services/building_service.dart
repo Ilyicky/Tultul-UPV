@@ -49,6 +49,45 @@ class BuildingService {
         });
   }
 
+  Stream<List<Room>> getBookmarkedRooms(List<String> roomIds) async* {
+    if (roomIds.isEmpty) {
+      yield [];
+      return;
+    }
+
+    // Get all buildings
+    final buildingsSnapshot = await buildingsCollection.get();
+    List<Room> bookmarkedRooms = [];
+
+    // Search through each building's floors and rooms
+    for (final buildingDoc in buildingsSnapshot.docs) {
+      final floorsSnapshot =
+          await buildingsCollection
+              .doc(buildingDoc.id)
+              .collection('floormaps')
+              .get();
+
+      for (final floorDoc in floorsSnapshot.docs) {
+        final roomsSnapshot =
+            await buildingsCollection
+                .doc(buildingDoc.id)
+                .collection('floormaps')
+                .doc(floorDoc.id)
+                .collection('rooms')
+                .where(FieldPath.documentId, whereIn: roomIds)
+                .get();
+
+        for (final roomDoc in roomsSnapshot.docs) {
+          if (roomIds.contains(roomDoc.id)) {
+            bookmarkedRooms.add(Room.fromFirestore(roomDoc.data(), roomDoc.id));
+          }
+        }
+      }
+    }
+
+    yield bookmarkedRooms;
+  }
+
   Future<List<Building>> getBuildings() async {
     final snapshot = await buildingsCollection.get();
     return snapshot.docs.map((doc) {
@@ -63,10 +102,7 @@ class BuildingService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
-            return FloorMap.fromFirestore(
-              doc.data(),
-              doc.id,
-            );
+            return FloorMap.fromFirestore(doc.data(), doc.id);
           }).toList();
         });
   }
@@ -84,10 +120,7 @@ class BuildingService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
-            return Room.fromFirestore(
-              doc.data(),
-              doc.id,
-            );
+            return Room.fromFirestore(doc.data(), doc.id);
           }).toList();
         });
   }
@@ -168,10 +201,7 @@ class BuildingService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
-            return RoomInstruction.fromFirestore(
-              doc.data(),
-              doc.id,
-            );
+            return RoomInstruction.fromFirestore(doc.data(), doc.id);
           }).toList();
         });
   }
@@ -182,13 +212,8 @@ class BuildingService {
       if (data['name'] == null || data['name'].toString().trim().isEmpty) {
         throw Exception('Building name is required');
       }
-      if (data['college'] == null || data['college'].toString().trim().isEmpty) {
-        throw Exception('College is required');
-      }
-      if (data['address'] == null || data['address'].toString().trim().isEmpty) {
-        throw Exception('Address is required');
-      }
-      if (data['description'] == null || data['description'].toString().trim().isEmpty) {
+      if (data['description'] == null ||
+          data['description'].toString().trim().isEmpty) {
         throw Exception('Description is required');
       }
       if (data['latitude'] == null) {
@@ -206,7 +231,7 @@ class BuildingService {
 
       final docRef = await buildingsCollection.add(buildingData);
       return docRef.id;
-    } catch (e, stackTrace) {
+    } catch (e) {
       throw Exception('Failed to create building: $e');
     }
   }
@@ -246,8 +271,6 @@ class BuildingService {
           'floor_id': floorId,
           'name': data['name'] ?? '',
           'description': data['description'] ?? '',
-          'type': data['type'] ?? '',
-          'status': data['status'] ?? 'Active',
         });
     return docRef.id;
   }
@@ -310,25 +333,19 @@ class BuildingService {
       // Add default buildings
       final defaultBuildings = [
         {
-          'name': 'College of Arts and Sciences',
+          'name': 'Arts and Sciences Building',
           'popular_names': ['CAS', 'AS'],
-          'description': 'A large college with 4 floors.',
-          'college': 'College of Arts and Sciences',
-          'address': '123 Library St.',
+          'description': 'A large academic building with 4 floors.',
           'latitude': 10.640849,
           'longitude': 122.227615,
-          'status': 'Active',
           'image_url': '',
         },
         // {
-        //   'name': 'College of Nursing',
+        //   'name': 'Nursing Building',
         //   'popular_names': ['Nursing Building', 'CON'],
-        //   'description': 'Main building for nursing courses',
-        //   'college': 'College of Nursing',
-        //   'address': 'CPU Campus',
+        //   'description': 'Main building for nursing programs',
         //   'latitude': 10.7280,
         //   'longitude': 122.5460,
-        //   'status': 'Active',
         //   'image_url': '',
         // },
       ];
@@ -402,8 +419,7 @@ class BuildingService {
   Future<bool> isRoomNameExists(
     String buildingId,
     String floorId,
-    String roomName,
-    String roomType, {
+    String roomName, {
     String? excludeRoomId,
   }) async {
     // Get all rooms in the floor
@@ -422,9 +438,7 @@ class BuildingService {
       }
       final data = doc.data();
       final existingName = (data['name'] as String?)?.toUpperCase() ?? '';
-      final existingType = (data['type'] as String?)?.toLowerCase() ?? '';
-      return existingName == roomName.toUpperCase() &&
-          existingType == roomType.toLowerCase();
+      return existingName == roomName.toUpperCase();
     });
   }
 
@@ -458,12 +472,7 @@ class BuildingService {
                 .collection('rooms')
                 .get();
         for (final roomDoc in roomsSnapshot.docs) {
-          allRooms.add(
-            Room.fromFirestore(
-              roomDoc.data(),
-              roomDoc.id,
-            ),
-          );
+          allRooms.add(Room.fromFirestore(roomDoc.data(), roomDoc.id));
         }
       }
     }
@@ -483,16 +492,37 @@ class BuildingService {
     return Building.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
   }
 
-  Building _buildBuildingFromDocument(DocumentSnapshot doc) {
-    if (doc.id.isEmpty) {
-      return Building.fromFirestore({}, '');
-    }
-
+  Future<void> deleteBuilding(String buildingId) async {
     try {
-      final data = doc.data() as Map<String, dynamic>;
-      return Building.fromFirestore(data, doc.id);
+      // First, delete all rooms in the building
+      final floorsSnapshot =
+          await buildingsCollection
+              .doc(buildingId)
+              .collection('floormaps')
+              .get();
+
+      for (final floorDoc in floorsSnapshot.docs) {
+        final roomsSnapshot =
+            await buildingsCollection
+                .doc(buildingId)
+                .collection('floormaps')
+                .doc(floorDoc.id)
+                .collection('rooms')
+                .get();
+
+        for (final roomDoc in roomsSnapshot.docs) {
+          await roomDoc.reference.delete();
+        }
+
+        // Delete the floor
+        await floorDoc.reference.delete();
+      }
+
+      // Finally, delete the building
+      await buildingsCollection.doc(buildingId).delete();
     } catch (e) {
-      return Building.fromFirestore({}, '');
+      print('Error deleting building: $e');
+      rethrow;
     }
   }
 }

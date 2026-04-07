@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:tultul_upv/models/room.dart';
 import 'package:tultul_upv/models/room_instruction.dart';
 import 'package:tultul_upv/services/building_service.dart';
-import 'package:provider/provider.dart';
-import 'package:tultul_upv/providers/user_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
@@ -171,7 +169,7 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
+    final isAdmin = ModalRoute.of(context)?.settings.name == '__admin__';
 
     return Scaffold(
       appBar: AppBar(title: Text('${widget.room.name} Instructions')),
@@ -266,7 +264,7 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
                       ),
                     ),
                     if (isAdmin)
-                      ButtonBar(
+                      OverflowBar(
                         children: [
                           TextButton.icon(
                             icon: const Icon(Icons.edit),
@@ -468,8 +466,9 @@ class _RoomInstructionsScreenState extends State<RoomInstructionsScreen> {
                                                       'image_urls': imageUrls,
                                                     },
                                                   );
-                                              if (mounted)
+                                              if (mounted) {
                                                 Navigator.pop(context);
+                                              }
                                             }
                                           },
                                           child: const Text('Save'),

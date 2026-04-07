@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tultul_upv/models/building.dart';
 import 'package:tultul_upv/models/floor_map.dart';
 import 'package:tultul_upv/models/room.dart';
 import 'package:tultul_upv/services/building_service.dart';
-import 'package:tultul_upv/providers/user_provider.dart';
 import 'room_instructions_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -30,117 +28,9 @@ class _RoomsScreenState extends State<RoomsScreen> {
   final ImagePicker _picker = ImagePicker();
   final cloudinary = CloudinaryPublic('dq0tsf6xm', 'ml_default', cache: false);
 
-  Future<void> _editField(
-    BuildContext context,
-    String title,
-    String currentValue,
-    Function(String) onSave,
-  ) async {
-    final controller = TextEditingController(text: currentValue);
-    return showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Edit $title'),
-            content: TextField(
-              controller: controller,
-              decoration: InputDecoration(hintText: 'Enter new $title'),
-              maxLines: title == 'Description' ? 3 : 1,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  onSave(controller.text);
-                  Navigator.pop(context);
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Widget _buildEditableField({
-    required BuildContext context,
-    required String label,
-    required String value,
-    required Function(String) onEdit,
-    bool multiLine = false,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(height: 1.5),
-            maxLines: multiLine ? 3 : 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit, size: 20),
-          onPressed: () => _editField(context, label, value, onEdit),
-        ),
-      ],
-    );
-  }
-
-  IconData _getRoomIcon(String type) {
-    switch (type.toLowerCase()) {
-      case 'classroom':
-        return Icons.school;
-      case 'laboratory':
-        return Icons.science;
-      case 'office':
-        return Icons.business;
-      case 'bathroom':
-        return Icons.wc;
-      case 'storage':
-        return Icons.inventory;
-      default:
-        return Icons.room;
-    }
-  }
-
-  Color _getRoomColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return Colors.green;
-      case 'inactive':
-        return Colors.red;
-      case 'maintenance':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-
   Future<void> _editRoom(BuildContext context, Room room) async {
     final formKey = GlobalKey<FormState>();
     String name = room.name;
-    String type = room.type.toLowerCase();
-    String status = room.status.toLowerCase();
-
-    // Ensure type and status match available dropdown values
-    if (![
-      'classroom',
-      'laboratory',
-      'office',
-      'bathroom',
-      'storage',
-      'other',
-    ].contains(type)) {
-      type = 'other';
-    }
-    if (!['active', 'inactive', 'maintenance'].contains(status)) {
-      status = 'active';
-    }
 
     return showDialog(
       context: context,
@@ -173,62 +63,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                   value?.isEmpty ?? true ? 'Required' : null,
                           onSaved: (value) => name = value ?? '',
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: type,
-                          decoration: const InputDecoration(
-                            labelText: 'Type *',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'classroom',
-                              child: Text('Classroom'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'laboratory',
-                              child: Text('Laboratory'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'office',
-                              child: Text('Office'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'bathroom',
-                              child: Text('Bathroom'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'storage',
-                              child: Text('Storage'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Other'),
-                            ),
-                          ],
-                          onChanged: (value) => type = value ?? type,
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: status,
-                          decoration: const InputDecoration(
-                            labelText: 'Status *',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'active',
-                              child: Text('Active'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'inactive',
-                              child: Text('Inactive'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'maintenance',
-                              child: Text('Maintenance'),
-                            ),
-                          ],
-                          onChanged: (value) => status = value ?? status,
-                        ),
                       ],
                     ),
                   ),
@@ -254,7 +88,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                     widget.building.buildingId,
                                     widget.floorMap.floorId,
                                     name,
-                                    type,
                                     excludeRoomId: room.roomId,
                                   );
 
@@ -304,7 +137,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                                 ),
                                                 const SizedBox(height: 12),
                                                 Text(
-                                                  'A $type with the name "$name" already exists',
+                                                  'A room with the name "$name" already exists',
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                   ),
@@ -335,7 +168,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                               widget.building.buildingId,
                               widget.floorMap.floorId,
                               room.roomId,
-                              {'name': name, 'type': type, 'status': status},
+                              {'name': name},
                             );
                             if (mounted) {
                               Navigator.pop(context);
@@ -361,8 +194,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
   Future<void> _createRoom(BuildContext context) async {
     final formKey = GlobalKey<FormState>();
     String name = '';
-    String type = 'classroom';
-    String status = 'active';
 
     return showDialog(
       context: context,
@@ -394,62 +225,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                   value?.isEmpty ?? true ? 'Required' : null,
                           onSaved: (value) => name = value ?? '',
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: type,
-                          decoration: const InputDecoration(
-                            labelText: 'Type *',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'classroom',
-                              child: Text('Classroom'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'laboratory',
-                              child: Text('Laboratory'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'office',
-                              child: Text('Office'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'bathroom',
-                              child: Text('Bathroom'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'storage',
-                              child: Text('Storage'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Other'),
-                            ),
-                          ],
-                          onChanged: (value) => type = value ?? 'classroom',
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: status,
-                          decoration: const InputDecoration(
-                            labelText: 'Status *',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'active',
-                              child: Text('Active'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'inactive',
-                              child: Text('Inactive'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'maintenance',
-                              child: Text('Maintenance'),
-                            ),
-                          ],
-                          onChanged: (value) => status = value ?? 'active',
-                        ),
                       ],
                     ),
                   ),
@@ -473,7 +248,6 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                   widget.building.buildingId,
                                   widget.floorMap.floorId,
                                   name,
-                                  type,
                                 );
 
                             if (exists) {
@@ -520,7 +294,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                               ),
                                               const SizedBox(height: 12),
                                               Text(
-                                                'A $type with the name "$name" already exists',
+                                                'A room with the name "$name" already exists',
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                 ),
@@ -546,10 +320,10 @@ class _RoomsScreenState extends State<RoomsScreen> {
                               return;
                             }
 
-                            final roomId = await _buildingService.createRoom(
+                            await _buildingService.createRoom(
                               widget.building.buildingId,
                               widget.floorMap.floorId,
-                              {'name': name, 'type': type, 'status': status},
+                              {'name': name},
                             );
                             if (mounted) {
                               Navigator.pop(context);
@@ -691,7 +465,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
+    final isAdmin = ModalRoute.of(context)?.settings.name == '__admin__';
 
     return Scaffold(
       appBar: AppBar(title: Text('Floor ${widget.floorMap.floorLevel} Rooms')),
@@ -767,68 +541,74 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                   widget.floorMap.image,
                                 ),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                              size: 28,
+                          if (isAdmin)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                              tooltip: 'Edit Floor Map Image',
+                              onPressed: () => _editFloorMapImage(context),
                             ),
-                            tooltip: 'Edit Floor Map Image',
-                            onPressed: () => _editFloorMapImage(context),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            tooltip: 'Delete Floor Map Image',
-                            onPressed: () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder:
-                                    (context) => AlertDialog(
-                                      title: const Text(
-                                        'Delete Floor Map Image',
-                                      ),
-                                      content: const Text(
-                                        'Are you sure you want to delete this floor map image?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed:
-                                              () =>
-                                                  Navigator.pop(context, false),
-                                          child: const Text('Cancel'),
+                          if (isAdmin)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                              tooltip: 'Delete Floor Map Image',
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder:
+                                      (context) => AlertDialog(
+                                        title: const Text(
+                                          'Delete Floor Map Image',
                                         ),
-                                        TextButton(
-                                          onPressed:
-                                              () =>
-                                                  Navigator.pop(context, true),
-                                          child: const Text('Delete'),
+                                        content: const Text(
+                                          'Are you sure you want to delete this floor map image?',
                                         ),
-                                      ],
-                                    ),
-                              );
-                              if (confirmed == true) {
-                                await _buildingService.updateFloorMapImage(
-                                  widget.building.buildingId,
-                                  widget.floorMap.floorId,
-                                  '',
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      ),
                                 );
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Floor map image deleted successfully',
-                                      ),
-                                      backgroundColor: Colors.green,
-                                    ),
+                                if (confirmed == true) {
+                                  await _buildingService.updateFloorMapImage(
+                                    widget.building.buildingId,
+                                    widget.floorMap.floorId,
+                                    '',
                                   );
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Floor map image deleted successfully',
+                                        ),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
                                 }
-                              }
-                            },
-                          ),
+                              },
+                            ),
                         ],
                       ),
                     ),
@@ -880,12 +660,9 @@ class _RoomsScreenState extends State<RoomsScreen> {
                       final room = rooms[index];
                       return Card(
                         child: ListTile(
-                          leading: Icon(
-                            _getRoomIcon(room.type),
-                            color: _getRoomColor(room.status),
-                          ),
+                          leading: const Icon(Icons.room),
                           title: Text(room.name),
-                          subtitle: Text(room.type),
+                          subtitle: const Text('Room'),
                           trailing:
                               isAdmin
                                   ? Row(

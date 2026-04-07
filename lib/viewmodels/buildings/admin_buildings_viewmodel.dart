@@ -7,7 +7,7 @@ class AdminBuildingsViewModel extends ChangeNotifier {
   final BuildingService _buildingService;
   String _searchQuery = '';
   String _filter = 'Buildings';
-  List<String> _filters = ['Buildings', 'Rooms'];
+  final List<String> _filters = ['Buildings', 'Rooms'];
   bool _isLoading = false;
   String? _error;
 
@@ -40,7 +40,7 @@ class AdminBuildingsViewModel extends ChangeNotifier {
       notifyListeners();
 
       final buildingId = await _buildingService.createBuilding(data);
-      
+
       _isLoading = false;
       notifyListeners();
       return buildingId;
@@ -59,7 +59,7 @@ class AdminBuildingsViewModel extends ChangeNotifier {
       notifyListeners();
 
       // TODO: Implement delete building logic
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -70,14 +70,17 @@ class AdminBuildingsViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateBuilding(String buildingId, Map<String, dynamic> data) async {
+  Future<void> updateBuilding(
+    String buildingId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       await _buildingService.updateBuilding(buildingId, data);
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -92,18 +95,16 @@ class AdminBuildingsViewModel extends ChangeNotifier {
     return buildings.where((building) {
       final name = building.name.toLowerCase();
       final popularNames = building.popularNames?.join(' ').toLowerCase() ?? '';
-      final college = building.college.toLowerCase();
       return name.contains(_searchQuery) ||
           popularNames.contains(_searchQuery) ||
-          college.contains(_searchQuery);
+          building.description.toLowerCase().contains(_searchQuery);
     }).toList();
   }
 
   List<Room> filterRooms(List<Room> rooms) {
     return rooms.where((room) {
       final name = room.name.toLowerCase();
-      final type = room.type.toLowerCase();
-      return name.contains(_searchQuery) || type.contains(_searchQuery);
+      return name.contains(_searchQuery);
     }).toList();
   }
-} 
+}

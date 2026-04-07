@@ -22,12 +22,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-
 
   @override
   void dispose() {
@@ -105,7 +104,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       appBar: AppBar(
         title: const Text(
           'Tultul UPV Sign Up Page',
-          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: const Color(0xFF800000),
         automaticallyImplyLeading: false,
@@ -119,10 +122,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Image.asset('assets/images/upv.png', width: 100, height: 100),
-                const SizedBox(height: 32),
+                Image.asset(
+                  'assets/images/tultul-UPV-logo-nobg.png',
+                  width: 200,
+                  height: 200,
+                ),
+                const SizedBox(height: 12),
                 const Text(
-                  'Welcome',
+                  'SIGN UP TO USE TULTUL UPV',
                   style: AppTheme.titleStyle,
                   textAlign: TextAlign.center,
                 ),
@@ -223,11 +230,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                customButton(
-                  'Sign Up',
-                  _signUp,
-                  isLoading: _isLoading,
-                ),
+                customButton('SIGN UP', _signUp, isLoading: _isLoading),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

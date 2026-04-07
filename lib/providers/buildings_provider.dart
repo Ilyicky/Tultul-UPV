@@ -20,7 +20,7 @@ class BuildingsProvider extends ChangeNotifier {
         .map((snapshot) {
           return snapshot.docs.map((doc) {
             return Building.fromFirestore(
-              doc.data() as Map<String, dynamic>,
+              doc.data(),
               doc.id,
             );
           }).toList();

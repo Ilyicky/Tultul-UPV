@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tultul_upv/models/building.dart';
 import 'package:tultul_upv/models/floor_map.dart';
 import 'package:tultul_upv/services/building_service.dart';
-import 'package:tultul_upv/providers/user_provider.dart';
 import 'package:tultul_upv/screens/rooms/rooms_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -176,116 +174,6 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
     }
   }
 
-  Future<void> _editFloorMapImage(
-    BuildContext context,
-    FloorMap floorMap,
-  ) async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        // Show loading indicator
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Uploading floor map image...')),
-          );
-        }
-
-        final file = File(image.path);
-
-        // Upload to Cloudinary
-        final response = await cloudinary.uploadFile(
-          CloudinaryFile.fromFile(
-            file.path,
-            folder:
-                'buildings/${widget.building.buildingId}/floors/${floorMap.floorId}',
-          ),
-        );
-
-        final hadExistingImage = floorMap.image.isNotEmpty;
-        await _buildingService.updateFloorMapImage(
-          widget.building.buildingId,
-          floorMap.floorId,
-          response.secureUrl,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                hadExistingImage
-                    ? 'Floor ${floorMap.floorLevel} image updated successfully'
-                    : 'Floor ${floorMap.floorLevel} image added successfully',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading floor map image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      print('Error uploading floor map image: $e');
-    }
-  }
-
-  Future<void> _deleteFloorMapImage(FloorMap floorMap) async {
-    try {
-      if (floorMap.image.isNotEmpty) {
-        // Show loading indicator
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Deleting floor map image...')),
-          );
-        }
-
-        // For Cloudinary, we just need to update the database
-        // The old image will be automatically cleaned up by Cloudinary's admin settings
-        await _buildingService.updateFloorMapImage(
-          widget.building.buildingId,
-          floorMap.floorId,
-          '',
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Floor ${floorMap.floorLevel} image deleted successfully',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error deleting floor ${floorMap.floorLevel} image: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      print('Error deleting floor map image: $e');
-    }
-  }
-
   Future<void> _createFloorMap(BuildContext context) async {
     final formKey = GlobalKey<FormState>();
     int floorLevel = 1;
@@ -417,11 +305,10 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                               return;
                             }
 
-                            final floorId = await _buildingService
-                                .createFloorMap(widget.building.buildingId, {
-                                  'floor_level': floorLevel,
-                                  'image_url': '',
-                                });
+                            await _buildingService.createFloorMap(
+                              widget.building.buildingId,
+                              {'floor_level': floorLevel, 'image_url': ''},
+                            );
                             if (mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -511,7 +398,7 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<UserProvider>().user?.isAdmin() ?? false;
+    final isAdmin = ModalRoute.of(context)?.settings.name == '__admin__';
 
     return Scaffold(
       appBar: AppBar(
@@ -576,91 +463,21 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                           ),
                         ),
                       ),
-                      // Eye, Edit, Delete icons at the top right
                       Positioned(
                         top: 24,
                         right: 32,
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.remove_red_eye,
-                                color: Colors.white,
-                                size: 28,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.remove_red_eye,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          tooltip: 'View Fullscreen',
+                          onPressed:
+                              () => _showFullScreenImage(
+                                context,
+                                building.imageUrl!,
                               ),
-                              tooltip: 'View Fullscreen',
-                              onPressed:
-                                  () => _showFullScreenImage(
-                                    context,
-                                    building.imageUrl!,
-                                  ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                              tooltip: 'Edit Building Image',
-                              onPressed: () => _editBuildingImage(context),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                              tooltip: 'Delete Building Image',
-                              onPressed: () async {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder:
-                                      (context) => AlertDialog(
-                                        title: const Text(
-                                          'Delete Building Image',
-                                        ),
-                                        content: const Text(
-                                          'Are you sure you want to delete this building image?',
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed:
-                                                () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed:
-                                                () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                            child: const Text('Delete'),
-                                          ),
-                                        ],
-                                      ),
-                                );
-                                if (confirmed == true) {
-                                  await _buildingService.updateBuilding(
-                                    building.buildingId,
-                                    {'image_url': ''},
-                                  );
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Building image deleted successfully',
-                                        ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                            ),
-                          ],
                         ),
                       ),
                     ],
@@ -765,28 +582,6 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                                     ),
                                     _buildEditableField(
                                       context: context,
-                                      label: 'College',
-                                      value: building.college,
-                                      onEdit:
-                                          (value) =>
-                                              _buildingService.updateBuilding(
-                                                building.buildingId,
-                                                {'college': value},
-                                              ),
-                                    ),
-                                    _buildEditableField(
-                                      context: context,
-                                      label: 'Address',
-                                      value: building.address,
-                                      onEdit:
-                                          (value) =>
-                                              _buildingService.updateBuilding(
-                                                building.buildingId,
-                                                {'address': value},
-                                              ),
-                                    ),
-                                    _buildEditableField(
-                                      context: context,
                                       label: 'Description',
                                       value: building.description,
                                       onEdit:
@@ -797,17 +592,6 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                                               ),
                                       multiLine: true,
                                     ),
-                                    _buildEditableField(
-                                      context: context,
-                                      label: 'Status',
-                                      value: building.status,
-                                      onEdit:
-                                          (value) =>
-                                              _buildingService.updateBuilding(
-                                                building.buildingId,
-                                                {'status': value},
-                                              ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -817,8 +601,7 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                               building.name,
                               style: Theme.of(context).textTheme.headlineMedium,
                             ),
-                            if (building.popularNames?.isNotEmpty ??
-                                false) ...[
+                            if (building.popularNames?.isNotEmpty ?? false) ...[
                               const SizedBox(height: 8),
                               Text(
                                 'Also known as: ${building.popularNames!.join(', ')}',
@@ -827,35 +610,8 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen> {
                             ],
                             const SizedBox(height: 16),
                             Text(
-                              building.college,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(building.address),
-                            const SizedBox(height: 16),
-                            Text(
                               building.description,
                               style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Icon(
-                                  building.status.toLowerCase() == 'active'
-                                      ? Icons.check_circle
-                                      : Icons.warning,
-                                  color:
-                                      building.status.toLowerCase() == 'active'
-                                          ? Colors.green
-                                          : Colors.orange,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  building.status,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
                             ),
                           ],
                         ],

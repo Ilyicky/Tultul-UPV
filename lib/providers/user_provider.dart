@@ -14,8 +14,12 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> setUser(User firebaseUser) async {
     try {
-      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
-      
+      _loading = true;
+      notifyListeners();
+
+      final doc =
+          await _firestore.collection('users').doc(firebaseUser.uid).get();
+
       if (doc.exists) {
         _user = UserModel.fromFirestore(doc);
       } else {
@@ -25,18 +29,38 @@ class UserProvider extends ChangeNotifier {
           name: firebaseUser.displayName ?? firebaseUser.email!.split('@')[0],
           role: UserRole.user,
         );
-        await _firestore.collection('users').doc(firebaseUser.uid).set(_user!.toMap());
+        await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .set(_user!.toMap());
       }
+      _loading = false;
       notifyListeners();
     } catch (e) {
       _user = null;
+      _loading = false;
       notifyListeners();
     }
   }
 
   Future<void> setupUser() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    await setUser(firebaseUser!);
+    _loading = true;
+    notifyListeners();
+
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        await setUser(firebaseUser);
+      } else {
+        _user = null;
+        _loading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      _user = null;
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> updateBookmarks({String? buildingId, String? roomId}) async {
@@ -65,6 +89,36 @@ class UserProvider extends ChangeNotifier {
       }
       await userDoc.update({'bookmarkedRooms': updatedRooms});
     }
+
+    // Refresh user data
+    await setupUser();
+  }
+
+  Future<void> removeBookmarkedBuilding(String buildingId) async {
+    if (_user == null) return;
+
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_user!.uid);
+
+    List<String> updatedBuildings = List.from(_user!.bookmarkedBuildings);
+    updatedBuildings.remove(buildingId);
+    await userDoc.update({'bookmarkedBuildings': updatedBuildings});
+
+    // Refresh user data
+    await setupUser();
+  }
+
+  Future<void> removeBookmarkedRoom(String roomId) async {
+    if (_user == null) return;
+
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_user!.uid);
+
+    List<String> updatedRooms = List.from(_user!.bookmarkedRooms);
+    updatedRooms.remove(roomId);
+    await userDoc.update({'bookmarkedRooms': updatedRooms});
 
     // Refresh user data
     await setupUser();

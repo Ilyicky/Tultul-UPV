@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:tultul_upv/theme/app_theme.dart';
-import 'package:tultul_upv/widgets/custom_button.dart'; // Adjust the import path as necessary
+import 'package:provider/provider.dart';
 
 //Components
+import 'package:tultul_upv/theme/app_theme.dart';
+import 'package:tultul_upv/widgets/custom_button.dart';
 
 //Provider
-//import here auth_provider
+import 'package:tultul_upv/providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,14 +36,23 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.setSettings(
-        appVerificationDisabledForTesting: true,
-      );
+      // sign in with Firebase Auth
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      if (!mounted) return;
+
+      // get the UserProvider and set the user
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.setUser(userCredential.user!);
+
+      if (!mounted) return;
+
+      // Navigate to home screen
+      Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred. Please try again.';
       if (e.code == 'user-not-found') {
@@ -55,17 +65,20 @@ class _LoginScreenState extends State<LoginScreen> {
         message = 'This user account has been disabled.';
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred. Please try again.')),
+          const SnackBar(
+            content: Text('An error occurred. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
-
+    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -78,10 +91,12 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         title: const Text(
           'Tultul UPV Login Page',
-          style: TextStyle(color: Colors.white,
-          fontSize:20,
-          fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
+        ),
         backgroundColor: const Color(0xFF800000),
         automaticallyImplyLeading: false,
       ),
@@ -94,10 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Image.asset('assets/images/upv.png', width: 100, height: 100),
-                const SizedBox(height: 32),
+                Image.asset(
+                  'assets/images/tultul-UPV-logo-nobg.png',
+                  width: 200,
+                  height: 200,
+                ),
+                const SizedBox(height: 12),
                 const Text(
-                  'Welcome',
+                  'WELCOME TO UPV TULTUL',
                   style: AppTheme.titleStyle, // Use the global style
                   textAlign: TextAlign.center,
                 ),
@@ -166,12 +185,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 24),
-                customButton(
-                  'Login',
-                  _login,
-                  isLoading: _isLoading,
-                ),
-                
+                customButton('LOGIN', _login, isLoading: _isLoading),
+
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
