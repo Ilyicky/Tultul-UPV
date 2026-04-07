@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 //App Screens
 import 'package:tultul_upv/screens/main_screen.dart';
@@ -565,7 +566,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 children: [
                   TileLayer(
                     urlTemplate:
-                        "https://api.mapbox.com/styles/v1/sharenlangga/cmal2bba200zr01rfbvi4evi6/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1Ijoic2hhcmVubGFuZ2dhIiwiYSI6ImNtYWtnczExNTE5ZDEyaW9wdTV0N3VhcXkifQ.Q0YFI9A6P6yJf01p0XbLCw",
+                        "https://api.mapbox.com/styles/v1/sharenlangga/cmal2bba200zr01rfbvi4evi6/tiles/256/{z}/{x}/{y}@2x?access_token=${dotenv.env['MAPBOX_ACCESS_TOKEN']}",
                     tileProvider: NetworkTileProvider(),
                     maxZoom: _maxZoomIn,
                     keepBuffer: 5,
